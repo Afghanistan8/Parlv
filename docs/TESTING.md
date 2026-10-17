@@ -61,6 +61,10 @@ failure instead of a silent runtime bug.
 - `lib/acts.test.ts` — enforces contract ⇄ app action-key parity from the app side.
 - `lib/verify.test.ts` — canonical-JSON + SHA-256 digest reconstruction mirrors the
   contract, including the immutable-field set.
+- `lib/client.test.ts` — pins the read path: `view` must request the
+  `latest-final` transaction-hash variant and must parse the contract's
+  JSON-string return.
+- `lib/errors.test.ts` — a contract refusal is recognised, a transport failure is not.
 - `components/Wallet.test.tsx` — the wallet layer discovers **every** announced
   EIP-6963 wallet, lists them so the user chooses, and connects to the one picked
   (not the first to announce). This is the regression guard for the app locking
@@ -99,6 +103,6 @@ difference is invisible to the unit tests and only shows up against the network.
 
 ```bash
 python -m pytest -q          # 78 passed
-cd web && pnpm run test      # 8 passed (3 files)
+cd web && pnpm run test      # 12 passed (5 files)
 cd web && pnpm run smoke     # 6/6 checks passed (live)
 ```
