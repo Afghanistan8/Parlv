@@ -1,45 +1,79 @@
 import Link from "next/link";
 
+const STEPS = [
+  {
+    n: "1",
+    title: "Freeze",
+    body: "The claimant publishes the claim and the criteria. The respondent accepts that exact version by its digest — the goalposts cannot move afterwards.",
+  },
+  {
+    n: "2",
+    title: "File",
+    body: "Both sides, plus an optional independent inspector, file photos and documents. The contract stores the bytes and computes every digest on chain.",
+  },
+  {
+    n: "3",
+    title: "Judge",
+    body: "GenLayer validators re-examine the stored evidence against the frozen criteria and must agree on what each criterion supports.",
+  },
+  {
+    n: "4",
+    title: "Settle",
+    body: "Deterministic code turns that consensus into findings and moves any held sum — to the claimant only on a final SUPPORTED finding.",
+  },
+];
+
 export default function Home() {
   return (
     <>
-      <h1>Criteria first. Evidence on chain. Validators judge. Code settles.</h1>
-      <p className="muted">
-        Parlv is evidence infrastructure on GenLayer Studionet. Parties freeze the
-        criteria <em>before</em> any evidence is filed. Evidence is stored on chain
-        with its digest. Independent validators examine it under consensus. Code —
-        not any person — converts that consensus into findings and settles funds.
-      </p>
+      <section className="hero">
+        <span className="eyebrow">Evidence infrastructure · GenLayer Studionet</span>
+        <h1 className="hero-title">
+          Freeze the rules. <span className="grad">Then let the evidence speak.</span>
+        </h1>
+        <p className="lead">
+          Parlv locks the criteria <em>before</em> a single byte of evidence is filed. Independent
+          validators assess what is on chain under consensus. Deterministic code — never an
+          operator — turns that verdict into a settlement.
+        </p>
+      </section>
+
       <div className="card">
-        <h2>The trust model in one screen</h2>
-        <ol>
-          <li><strong>Freeze.</strong> The claimant publishes the claim and criteria; the respondent accepts that exact version by its digest. No moving the goalposts.</li>
-          <li><strong>File.</strong> Both sides (and an optional independent inspector) file photos and documents. The contract stores the bytes and computes digests.</li>
-          <li><strong>Judge.</strong> GenLayer validators re-examine the stored evidence against the frozen criteria and must agree on what is supported.</li>
-          <li><strong>Settle.</strong> Deterministic code converts consensus into findings and moves any held sum: to the claimant <em>only</em> on a final SUPPORTED finding.</li>
+        <h2>How a case resolves</h2>
+        <ol className="steps">
+          {STEPS.map((s) => (
+            <li className="step" key={s.n}>
+              <span className="step-num">{s.n}</span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+              </div>
+            </li>
+          ))}
         </ol>
-        <p className="small muted">
-          Uncertainty fails closed. Missing evidence is never proof of anything. No
-          operator, admin, or upgrade key exists — and no party can self-certify.
+        <p className="note">
+          Uncertainty fails closed. Missing evidence proves nothing. There is no owner, admin,
+          operator, or upgrade key — and no party can certify its own claim.
         </p>
       </div>
-      <div className="grid2">
-        <div className="card">
-          <h3>Start a case</h3>
-          <p className="small muted">Draft the claim and criteria, name the respondent, optionally fund it.</p>
-          <Link href="/cases/new"><button>New case</button></Link>
-        </div>
-        <div className="card">
-          <h3>Verify anything</h3>
-          <p className="small muted">Recompute terms, evidence, decision, and receipt digests from live chain state.</p>
-          <Link href="/verify"><button className="ghost">Open verifier</button></Link>
-        </div>
+
+      <div className="cta-grid">
+        <Link className="cta" href="/cases/new">
+          <h3>Open a case</h3>
+          <p>Draft the claim and criteria, name the respondent, optionally fund the sum.</p>
+          <span className="cta-go">New case →</span>
+        </Link>
+        <Link className="cta" href="/verify">
+          <h3>Verify a case</h3>
+          <p>Recompute the terms, evidence, decision, and receipt digests from live chain state.</p>
+          <span className="cta-go">Open verifier →</span>
+        </Link>
       </div>
+
       <div className="banner">
-        <strong>ACCEPTED ≠ FINALIZED.</strong> An assessment result is a standing
-        decision, not authority. Funds move only after the challenge window closes
-        and <span className="mono">finalize</span> runs. The app marks every
-        non-final state as such.
+        <strong>ACCEPTED is not FINALIZED.</strong> An assessment result is a standing decision,
+        not authority. Funds move only after the challenge window closes and{" "}
+        <span className="mono">finalize</span> runs. The app labels every non-final state.
       </div>
     </>
   );

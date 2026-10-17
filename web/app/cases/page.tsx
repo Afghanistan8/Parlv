@@ -28,8 +28,8 @@ export default function CasesPage() {
 
   return (
     <>
-      <h1>Cases ({total})</h1>
-      <p><Link href="/cases/new"><button>New case</button></Link></p>
+      <h1>Cases <span className="muted">({total})</span></h1>
+      <p><Link className="btn" href="/cases/new">New case</Link></p>
       {error && <div className="card error">{error}</div>}
       {cases.map((c) => (
         <div className="card" key={c.case_id}>
