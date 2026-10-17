@@ -19,7 +19,7 @@ is never treated as proof of anything.
 
 | | |
 |---|---|
-| Contract | [`0x85c9bbdAe943e04e43E0ad3B560fC3Bd9041bf57`](https://genlayer-explorer.vercel.app) |
+| Contract | [`0x85c9bbdAe943e04e43E0ad3B560fC3Bd9041bf57`](https://explorer-studio.genlayer.com/address/0x85c9bbdAe943e04e43E0ad3B560fC3Bd9041bf57) |
 | Deploy transaction | `0x9ef9256414661f145c96b18d1b01c86df45575c491ef34ac4890cf315043cae9` |
 | Status / result | `FINALIZED` / `MAJORITY_AGREE` |
 | Deployer | `0x4184bc5E5444F250767E8D33A49817A9B4FB0df3` |

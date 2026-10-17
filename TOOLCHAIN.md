@@ -77,5 +77,5 @@ from genlayer.py.storage import TreeMap
 
 - RPC: `https://studio.genlayer.com/api`
 - Main contract: `0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575`
-- Explorer: `https://genlayer-explorer.vercel.app`
+- Explorer: `https://explorer-studio.genlayer.com`
 - Faucet/funding: `genlayer account send <to> <wei>` (amount in WEI, not GEN)

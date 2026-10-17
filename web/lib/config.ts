@@ -8,7 +8,7 @@
 
 export const STUDIONET_CHAIN_ID = 61999;
 export const STUDIONET_RPC_URL = "https://studio.genlayer.com/api";
-export const STUDIONET_EXPLORER = "https://genlayer-explorer.vercel.app";
+export const STUDIONET_EXPLORER = "https://explorer-studio.genlayer.com";
 
 /** Deployment of record — written by scripts/deploy.mjs --record. */
 const PARLV_CONTRACT_FALLBACK = "0x85c9bbdAe943e04e43E0ad3B560fC3Bd9041bf57" as const;
