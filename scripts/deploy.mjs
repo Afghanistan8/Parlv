@@ -358,21 +358,33 @@ function record(source, address, tx) {
   reportManifest(manifest, base);
 }
 
+/** Re-verify a recorded deployment against the live chain; never writes. */
 function verifyRecorded(source, address) {
-  const raw = readFileSync(MANIFEST, "utf8");
-  const manifest = JSON.parse(raw);
+  const manifest = JSON.parse(readFileSync(MANIFEST, "utf8"));
   const target = address ?? manifest.contract_address;
   const onchainSource = fetchOnchainSource(target);
-  manifest.contract_address = target;
-  manifest.onchain_source_sha256 = sha256(canonical(onchainSource));
-  manifest.verified =
-    manifest.onchain_source_sha256 === source.sha256 &&
-    manifest.onchain_source_sha256 === source.canonical_sha256;
-  manifest.verified_at = new Date().toISOString();
-  writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
-  writeProofs(manifest, onchainSource);
-  assertVerified(manifest);
-  reportManifest(manifest, MANIFEST);
+  const onchainCanonical = sha256(canonical(onchainSource));
+  const matchesSource =
+    onchainCanonical === source.sha256 && onchainCanonical === source.canonical_sha256;
+  const matchesRecord = onchainCanonical === manifest.onchain_source_sha256;
+  log(`contract      ${target}`);
+  log(`transaction   ${manifest.transaction}`);
+  log(`deployer      ${manifest.deployer}`);
+  log(`status        ${manifest.finalized ? "FINALIZED" : manifest.status ?? "NOT_FINALIZED"}`);
+  log(`result        ${manifest.result}`);
+  log(`source sha256 ${source.sha256}`);
+  log(`onchain sha256 ${onchainCanonical}`);
+  log(`recorded sha256 ${manifest.onchain_source_sha256}`);
+  log(`verified      ${matchesSource && matchesRecord}`);
+  log(`manifest      ${MANIFEST} (unchanged)`);
+  if (!matchesSource || !matchesRecord) {
+    fail(
+      `on-chain source does not match ${CONTRACT_REL} or the recorded manifest\n` +
+        `  local   canonical sha256: ${source.canonical_sha256}\n` +
+        `  onchain canonical sha256: ${onchainCanonical}\n` +
+        `  recorded canonical sha256: ${manifest.onchain_source_sha256}`,
+    );
+  }
 }
 
 function parseArgs(argv) {
