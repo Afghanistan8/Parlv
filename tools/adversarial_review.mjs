@@ -10,7 +10,8 @@
  *   2. every @gl.public.write calls _guard_chain() before it does anything;
  *   3. the contract's get_actions keys and the app's Acts type are identical;
  *   4. there is no pause / upgrade / owner / admin / operator surface;
- *   5. committed text carries no model or assistant attribution.
+ *   5. the wallet provider and connect control are mounted (else read-only);
+ *   6. committed text carries no model or assistant attribution.
  *
  * Hard failures exit non-zero. Advisories are printed and do not fail the run.
  *
@@ -173,7 +174,27 @@ function checkNoGovernanceSurface(source) {
   }
 }
 
-/** 5. No model/assistant attribution in committed text. */
+/** 5. The wallet UI is mounted, so the app can sign and not only read. */
+function checkWalletMounted() {
+  const layout = join(ROOT, "web", "app", "layout.tsx");
+  let text;
+  try {
+    text = read(layout);
+  } catch {
+    fail("cannot read web/app/layout.tsx");
+    return;
+  }
+  const missing = [];
+  if (!/<WalletProvider[\s>]/.test(text)) missing.push("WalletProvider");
+  if (!/<WalletBar\s*\/>/.test(text)) missing.push("WalletBar");
+  if (missing.length) {
+    fail(`web/app/layout.tsx does not mount ${missing.join(" and ")} — the app would be read-only`);
+  } else {
+    pass("wallet provider and connect control are mounted in the layout");
+  }
+}
+
+/** 6. No model/assistant attribution in committed text. */
 function checkAttribution(files) {
   const self = fileURLToPath(import.meta.url);
   const hits = [];
@@ -217,6 +238,7 @@ function main() {
   checkWritesGuardChain(contractSource);
   checkGateParity(contractSource);
   checkNoGovernanceSurface(contractSource);
+  checkWalletMounted();
   checkAttribution(walk(ROOT));
 
   report();
