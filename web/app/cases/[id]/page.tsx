@@ -6,10 +6,12 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useWallet } from "../../../components/Wallet";
 import { view, write } from "../../../lib/client";
 import type { Acts, Case, Decision, Evidence, Terms } from "../../../lib/types";
 import { cleanImage, toBytesArg } from "../../../lib/image";
+import { isContractRefusal } from "../../../lib/errors";
 
 function Can({ label, can, onClick }: { label: string; can: { ok: boolean; why: string } | undefined; onClick?: () => void }) {
   if (!can) return null;
@@ -32,10 +34,12 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [decision, setDecision] = useState<Decision | null>(null);
   const [acts, setActs] = useState<Acts | null>(null);
   const [error, setError] = useState("");
+  const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState("");
 
   const reload = useCallback(async () => {
     setError("");
+    setNotFound(false);
     try {
       const kase = await view<Case>("get_case", [id]);
       setC(kase);
@@ -47,7 +51,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       if (address) setActs(await view<Acts>("get_actions", [id, address]));
       else setActs(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      // A missing case makes get_case refuse on chain; that is not an error the
+      // user should see as transport noise.
+      setNotFound(isContractRefusal(msg));
+      setError(msg);
     }
   }, [id, address]);
 
@@ -93,6 +101,19 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
+  if (notFound) {
+    return (
+      <div className="card error">
+        <strong>
+          No case <span className="mono">{id.trim().toUpperCase()}</span> on this contract.
+        </strong>
+        <div className="small">
+          The contract refused the read, which means it holds no such case. Check the id on the{" "}
+          <Link href="/cases">cases list</Link>, or <Link href="/cases/new">open a new case</Link>.
+        </div>
+      </div>
+    );
+  }
   if (error && !c) return <div className="card error">{error}</div>;
   if (!c || !t) return <p className="muted">Loading…</p>;
   const final = c.state === "FINAL";

@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { view } from "../../lib/client";
+import { isContractRefusal } from "../../lib/errors";
 import { digestOf, withoutMutable } from "../../lib/verify";
 
 interface Row {
@@ -58,7 +59,12 @@ export default function VerifyPage() {
         out.push({ label: "Decision", ok: true, detail: "no standing decision yet" });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(
+        isContractRefusal(msg)
+          ? `The contract holds no case ${cid.trim().toUpperCase()}. Check the id on the cases list.`
+          : msg,
+      );
     } finally {
       setBusy(false);
       setRows(out);
