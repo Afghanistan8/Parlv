@@ -79,7 +79,6 @@ funder; all movement is pull-based so nothing is stranded.
 python -m pytest tests/parity/test_parity.py -q
 cd web && pnpm run test && pnpm run typecheck && pnpm run lint
 ```
-
 Parity tests fail if the contract's `get_actions` keys and the app's vocabulary
 diverge. The app renders affordances from `get_actions` and refuses non-Studionet
 chains before building any transaction.

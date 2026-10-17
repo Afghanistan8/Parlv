@@ -65,6 +65,10 @@ export async function view<T>(functionName: string, args: unknown[] = []): Promi
     address: getContract(),
     functionName,
     args: args as never[],
+    // Studionet's RPC rejects the genlayer-js default "latest-nonfinal" variant
+    // with an HTML error page (viem then retries, so reads appear to hang).
+    // "latest-final" is the variant the network serves.
+    transactionHashVariant: "latest-final" as never,
   });
   return parseCalldata<T>(raw);
 }

@@ -126,6 +126,7 @@ pnpm install
 pnpm run typecheck
 pnpm run lint
 pnpm run test
+pnpm run smoke   # read-only check against the live Studionet contract
 pnpm run dev     # http://localhost:3189
 ```
 

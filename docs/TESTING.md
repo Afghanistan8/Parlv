@@ -1,6 +1,7 @@
 # Testing
 
-Parlv has three test layers. All of them run without a network and without keys.
+Parlv has four test layers. The first three run without a network and without
+keys; the fourth reads the live deployment and needs only an internet connection.
 
 ```bash
 # Contract tests (Direct Mode + parity): from the repository root
@@ -12,6 +13,7 @@ cd web
 pnpm run typecheck
 pnpm run lint
 pnpm run test
+pnpm run smoke      # one read-only check against the live Studionet contract
 ```
 
 > Note: `python -m pytest` prints a `gltest` warning on stderr, which PowerShell
@@ -54,16 +56,33 @@ and renders every critical one, `get_actions` emits every mapped gate, and every
 gate reason is a user-facing sentence. This is what makes wire drift a build
 failure instead of a silent runtime bug.
 
-## 3. Frontend tests (`web/lib/*.test.ts`, Vitest)
+## 3. Frontend tests (`web/lib/*.test.ts`, `web/components/*.test.tsx`, Vitest)
 
-- `acts.test.ts` — enforces contract ⇄ app action-key parity from the app side.
-- `verify.test.ts` — canonical-JSON + SHA-256 digest reconstruction mirrors the
+- `lib/acts.test.ts` — enforces contract ⇄ app action-key parity from the app side.
+- `lib/verify.test.ts` — canonical-JSON + SHA-256 digest reconstruction mirrors the
   contract, including the immutable-field set.
+- `components/Wallet.test.tsx` — the wallet layer discovers **every** announced
+  EIP-6963 wallet, lists them so the user chooses, and connects to the one picked
+  (not the first to announce). This is the regression guard for the app locking
+  itself to a single wallet.
 
 Plus `pnpm run typecheck` (TypeScript) and `pnpm run lint` (ESLint via
 `eslint-config-next` through `FlatCompat`).
 
-## 4. What is deliberately not tested here
+## 4. Live smoke test (`web/scripts/live-smoke.mjs`)
+
+`pnpm run smoke` reads the **deployed** contract through the same client path the
+browser uses and asserts the invariants the app depends on: `get_config` returns
+this app's rules id on chain 61999, `get_governance` reports no admin key, no
+upgrade key, and no deployer power, and `list_cases` returns a page. It exits
+non-zero on any failure.
+
+It is the test that catches read-path drift: it uses
+`transactionHashVariant: "latest-final"`, because the `genlayer-js` default
+(`"latest-nonfinal"`) is rejected by this RPC with an HTML error page. That
+difference is invisible to the unit tests and only shows up against the network.
+
+## 5. What is deliberately not tested here
 
 - **Live consensus.** Direct Mode runs only the leader; `h.run_validator()` replays
   the captured validator closure for dissent tests. Real validator voting, quorum,
@@ -71,10 +90,15 @@ Plus `pnpm run typecheck` (TypeScript) and `pnpm run lint` (ESLint via
   `FINALIZED` / `MAJORITY_AGREE` receipt.
 - **Network availability.** The chain gate is asserted statically and behaviourally,
   but a live outage is not simulated.
+- **Signed writes from a browser wallet.** No automated browser has a funded
+  Studionet wallet, so the write path is exercised up to the pre-sign gates
+  (no provider, wrong chain) and the contract's own write tests; the final
+  signature is a real wallet action by design.
 
-## 5. Reproducing the count
+## 6. Reproducing the counts
 
 ```bash
 python -m pytest -q          # 78 passed
-cd web && pnpm run test      # 6 passed
+cd web && pnpm run test      # 8 passed (3 files)
+cd web && pnpm run smoke     # 6/6 checks passed (live)
 ```
