@@ -8,13 +8,18 @@ button is a security-relevant defect: a user who cannot see "Withdraw case" or
 "Close challenge" cannot exercise the right the contract grants them.
 """
 
+import json
 import re
 from pathlib import Path
+
+from .canonical import CASES, CONTRACT_CALL, FIXTURE, build_fixture, canon, digest
 
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = ROOT / "contracts" / "parlv.py"
 TYPES = ROOT / "web" / "lib" / "types.ts"
 CASE_PAGE = ROOT / "web" / "app" / "cases" / "[id]" / "page.tsx"
+VERIFY_TS = ROOT / "web" / "lib" / "verify.ts"
+NEW_CASE_PAGE = ROOT / "web" / "app" / "cases" / "new" / "page.tsx"
 
 # write method -> get_actions gate key (None = no gate; the case does not exist yet)
 WRITE_TO_GATE = {
@@ -113,3 +118,98 @@ def test_gate_reasons_are_user_facing():
             continue
         assert len(text.strip('"')) >= 10, f"cryptic reason: {n}"
         assert "Traceback" not in text
+
+
+# ---- canonical JSON: the bytes the browser must reproduce ------------------
+#
+# Every digest is a SHA-256 over the contract's `_canon`. The Verify page
+# recomputes those digests in the browser (web/lib/verify.ts). If the two
+# implementations disagree on one byte, the page reports MISMATCH for a case
+# that is perfectly valid — so the divergence has to fail a test, not a user.
+# `canonical.json` is the shared fixture; the browser test reads the same file.
+
+def _strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            yield k
+            yield from _strings(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from _strings(v)
+
+
+def test_contract_canon_is_the_replicated_form():
+    """The form tests/parity/canonical.py reproduces is the one in the contract."""
+    s = CONTRACT.read_text(encoding="ascii")
+    assert CONTRACT_CALL in s, (
+        "the contract's _canon no longer matches the replicated form; change "
+        "tests/parity/canonical.py and web/lib/verify.ts together"
+    )
+
+
+def test_parity_fixture_is_current():
+    """The committed fixture is exactly what the shared generator produces."""
+    assert FIXTURE.exists(), f"missing {FIXTURE}; run: python tests/parity/canonical.py"
+    committed = json.loads(FIXTURE.read_text(encoding="ascii"))
+    assert committed == build_fixture(), (
+        "tests/parity/fixtures/canonical.json is stale; run: python tests/parity/canonical.py"
+    )
+
+
+def test_parity_fixture_covers_non_ascii_and_astral():
+    """The fixture must exercise what the browser used to get wrong."""
+    strings = [x for _, value in CASES for x in _strings(value)]
+    assert any(ord(ch) > 0x7F for s in strings for ch in s), "fixture has no non-ASCII text"
+    assert any(ord(ch) > 0xFFFF for s in strings for ch in s), "fixture has no astral text"
+
+
+def test_parity_fixture_binds_browser_and_contract():
+    """web/lib/verify.test.ts reads this fixture, so the two sides cannot drift."""
+    ts = VERIFY_TS.read_text(encoding="utf-8")
+    assert "fixtures/canonical.json" in ts, "the browser test no longer reads the shared fixture"
+
+
+def test_every_fixture_digest_recomputes():
+    for case in build_fixture()["cases"]:
+        assert case["canonical"] == canon(case["value"]), case["name"]
+        assert case["sha256"] == digest(case["value"]), case["name"]
+
+
+# ---- the client exposes the documented write surface -----------------------
+#
+# The steward's finding: docs/ARCHITECTURE.md documents fund_case, revise_terms,
+# submit_text, expire_case and lapse_case, and the console did not expose them
+# (a "Revise terms" button rendered with no handler at all). These tests pin the
+# app to the documented surface so a path cannot silently disappear again.
+
+REQUIRED_CLIENT_WRITES = (
+    "open_case", "revise_terms", "accept_case", "decline_case", "withdraw_case",
+    "accept_inspector", "fund_case", "expire_case", "submit_image", "submit_text",
+    "mark_ready", "lapse_case", "request_assessment", "challenge", "readjudicate",
+    "close_challenge", "finalize", "withdraw",
+)
+
+
+def test_every_write_is_reachable_from_the_client():
+    """Every write the contract documents is called from the app, not just declared."""
+    web = ROOT / "web"
+    sources = []
+    for sub in ("app", "lib", "components"):
+        sources += [
+            p.read_text(encoding="utf-8")
+            for p in (web / sub).rglob("*")
+            if p.suffix in (".ts", ".tsx") and not p.name.endswith(".test.ts") and not p.name.endswith(".test.tsx")
+        ]
+    text = "\n".join(sources)
+    missing = [w for w in REQUIRED_CLIENT_WRITES if f'"{w}"' not in text]
+    assert not missing, f"writes the contract exposes but the client never calls: {missing}"
+
+
+def test_no_action_button_is_a_dead_end():
+    """A rendered `Can` affordance must carry a handler (revise once had none)."""
+    s = CASE_PAGE.read_text(encoding="utf-8")
+    for line in s.splitlines():
+        if "<Can " in line and "can={acts." in line:
+            assert "onClick=" in line, f"dead action button: {line.strip()}"

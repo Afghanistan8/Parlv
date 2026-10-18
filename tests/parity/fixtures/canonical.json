@@ -1,0 +1,198 @@
+{
+  "note": "Produced by tests/parity/canonical.py. The browser's canonDeep must reproduce every canonical string and sha256 here.",
+  "canon_expr": "json.dumps(value, sort_keys=True, separators=(\",\", \":\"), ensure_ascii=True)",
+  "cases": [
+    {
+      "name": "ascii_baseline",
+      "value": {
+        "b": 1,
+        "a": [
+          2,
+          {
+            "d": 4,
+            "c": 3
+          }
+        ]
+      },
+      "canonical": "{\"a\":[2,{\"c\":3,\"d\":4}],\"b\":1}",
+      "sha256": "5b3540cb0ae78a5a1b25199f5e2e6dc3b1b4b360ef6f9146d50650546744adf4"
+    },
+    {
+      "name": "latin_accents",
+      "value": {
+        "claim": "Le mur a \u00e9t\u00e9 repeint, caf\u00e9 \u00d1"
+      },
+      "canonical": "{\"claim\":\"Le mur a \\u00e9t\\u00e9 repeint, caf\\u00e9 \\u00d1\"}",
+      "sha256": "4685a73beabd74ca8496160ad328c88ae4d62429ee88d0bacedef4612d163944"
+    },
+    {
+      "name": "accented_key",
+      "value": {
+        "cl\u00e9": "valeur"
+      },
+      "canonical": "{\"cl\\u00e9\":\"valeur\"}",
+      "sha256": "2afaa4f3e515c1ca0c7cf9305f7b5a88cae50955233b8f785de15dc8c4725923"
+    },
+    {
+      "name": "cyrillic",
+      "value": {
+        "note": "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0430"
+      },
+      "canonical": "{\"note\":\"\\u0414\\u043e\\u0441\\u0442\\u0430\\u0432\\u043a\\u0430 \\u0432\\u044b\\u043f\\u043e\\u043b\\u043d\\u0435\\u043d\\u0430\"}",
+      "sha256": "adb75d6f7bb520297241e891a454d761268b3284930f0201e4a7ccc04435c718"
+    },
+    {
+      "name": "greek",
+      "value": {
+        "note": "\u03a0\u03b1\u03c1\u03ac\u03b4\u03bf\u03c3\u03b7"
+      },
+      "canonical": "{\"note\":\"\\u03a0\\u03b1\\u03c1\\u03ac\\u03b4\\u03bf\\u03c3\\u03b7\"}",
+      "sha256": "22f10d357abd95ef6c115bf752e0f7c103111e14c3c70335f7f56b821a6e55f5"
+    },
+    {
+      "name": "cjk",
+      "value": {
+        "title": "\u74e6\u792b\u306e\u64a4\u53bb",
+        "note": "\u914d\u9001\u5b8c\u4e86"
+      },
+      "canonical": "{\"note\":\"\\u914d\\u9001\\u5b8c\\u4e86\",\"title\":\"\\u74e6\\u792b\\u306e\\u64a4\\u53bb\"}",
+      "sha256": "48d16576d7c581217b1ce7d9ccd1a30cd904c8a70ab8b896a53ac60a0e05c159"
+    },
+    {
+      "name": "arabic",
+      "value": {
+        "note": "\u062a\u0645 \u0627\u0644\u062a\u0633\u0644\u064a\u0645"
+      },
+      "canonical": "{\"note\":\"\\u062a\\u0645 \\u0627\\u0644\\u062a\\u0633\\u0644\\u064a\\u0645\"}",
+      "sha256": "0593b74c660b8ab0d7daed549800d3b5701d1c465a0d6d743eaaf38fbacbb8ba"
+    },
+    {
+      "name": "hebrew",
+      "value": {
+        "note": "\u05e0\u05de\u05e1\u05e8"
+      },
+      "canonical": "{\"note\":\"\\u05e0\\u05de\\u05e1\\u05e8\"}",
+      "sha256": "12da6ded67b026e191d880c3ab1d10e32f5bdbcee5292d0c019204945b124573"
+    },
+    {
+      "name": "combining_mark",
+      "value": {
+        "note": "e\u0301"
+      },
+      "canonical": "{\"note\":\"e\\u0301\"}",
+      "sha256": "414b09a50da5c8b3cd4bbcfba19b508d0de44e59d9fa52c652e010f595ce6fe2"
+    },
+    {
+      "name": "bmp_symbol",
+      "value": {
+        "mark": "\u2714 accepted"
+      },
+      "canonical": "{\"mark\":\"\\u2714 accepted\"}",
+      "sha256": "7b4c68e9594d80232412c6717daaaa5ae6007e99b66decd5979b8d3db3a099a6"
+    },
+    {
+      "name": "astral_emoji",
+      "value": {
+        "face": "\ud83d\ude00"
+      },
+      "canonical": "{\"face\":\"\\ud83d\\ude00\"}",
+      "sha256": "7bf8556b855c0284ced670b8a1076811b7b54ff7f3e7419606b4fac972de74f8"
+    },
+    {
+      "name": "zwj_sequence",
+      "value": {
+        "who": "\ud83d\udc69\u200d\ud83d\udcbb"
+      },
+      "canonical": "{\"who\":\"\\ud83d\\udc69\\u200d\\ud83d\\udcbb\"}",
+      "sha256": "b23ee85613fc699cfa9e6d718a5acfac1af29b35e9ef542800f49584fc3bea9f"
+    },
+    {
+      "name": "astral_key_vs_bmp_key",
+      "value": {
+        "\ue000": "bmp-private",
+        "\ud83d\ude00": "astral"
+      },
+      "canonical": "{\"\\ue000\":\"bmp-private\",\"\\ud83d\\ude00\":\"astral\"}",
+      "sha256": "69844ee01b582da0d2340061351a72b7dd1c8c73bf5f8b934da939f1b8292452"
+    },
+    {
+      "name": "controls",
+      "value": {
+        "note": "a\tb\nc\u0001d\u001fe\r"
+      },
+      "canonical": "{\"note\":\"a\\tb\\nc\\u0001d\\u001fe\\r\"}",
+      "sha256": "35fa31eb2c726adc535e55a2c008ebc13aacddb6c03d7e1a04239fbbd3d89c94"
+    },
+    {
+      "name": "quotes_and_backslash",
+      "value": {
+        "note": "he said \"hi\" \\ bye"
+      },
+      "canonical": "{\"note\":\"he said \\\"hi\\\" \\\\ bye\"}",
+      "sha256": "d368371273eb622923fb17b605ebe364678977b2edbc2b0b18862e3d244bc194"
+    },
+    {
+      "name": "del_and_fullwidth",
+      "value": {
+        "note": "\u007f IV \uff21\uff22\uff23 \u2163"
+      },
+      "canonical": "{\"note\":\"\\u007f IV \\uff21\\uff22\\uff23 \\u2163\"}",
+      "sha256": "93fbcb642597fdaaa123f956fcb38d03f2d0cfe1d052a40bd4d57d5903992676"
+    },
+    {
+      "name": "line_and_para_separators",
+      "value": {
+        "note": "a\u2028b\u2029c"
+      },
+      "canonical": "{\"note\":\"a\\u2028b\\u2029c\"}",
+      "sha256": "b91e090f03833811899b44a31ca9e277a54e8b9a8add321875976898c3f5d3ed"
+    },
+    {
+      "name": "lone_surrogate",
+      "value": {
+        "bad": "\ud800"
+      },
+      "canonical": "{\"bad\":\"\\ud800\"}",
+      "sha256": "082ab20c47779059d5c223b7152e99e5f40181aee5ec51984b2de7ae33bcabb0"
+    },
+    {
+      "name": "nested",
+      "value": {
+        "a": "z",
+        "b": [
+          {
+            "\u00e9": "\u00fc"
+          },
+          2,
+          true,
+          null
+        ]
+      },
+      "canonical": "{\"a\":\"z\",\"b\":[{\"\\u00e9\":\"\\u00fc\"},2,true,null]}",
+      "sha256": "6e3f77f4165fda64b3cd3173b0603c4f242b446730945e4215de8cb422ebe59c"
+    },
+    {
+      "name": "numbers_and_bools",
+      "value": {
+        "n": 0,
+        "m": 42,
+        "big": 1000000000000000000,
+        "t": true,
+        "f": false,
+        "z": null
+      },
+      "canonical": "{\"big\":1000000000000000000,\"f\":false,\"m\":42,\"n\":0,\"t\":true,\"z\":null}",
+      "sha256": "01d3be171de4cf1c9963a54c55c771f70fd52e3b1ecc655a49b366a2eebcab65"
+    },
+    {
+      "name": "empty_and_spaces",
+      "value": {
+        "a": "",
+        "b": " ",
+        "c": "  padded  "
+      },
+      "canonical": "{\"a\":\"\",\"b\":\" \",\"c\":\"  padded  \"}",
+      "sha256": "6f1b7427d37d0d2ee2bb7430099688ae34586012aa8645241ac268d8a8d22bf9"
+    }
+  ]
+}

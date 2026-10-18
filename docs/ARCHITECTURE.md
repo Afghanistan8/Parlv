@@ -218,25 +218,33 @@ Studionet. Every write authorises purely from the roles named in the frozen term
 ## 8. Frontend architecture
 
 ```
-web/app/page.tsx            landing / trust model
-web/app/cases/page.tsx      case list (list_cases)
-web/app/cases/new/page.tsx  draft a case (open_case)
-web/app/cases/[id]/page.tsx case detail: acts, evidence, decisions, settlement
-web/app/verify/page.tsx     recompute digests from live chain state (get_receipt)
-web/app/status/page.tsx     network + contract status (get_config / get_stats)
-web/components/Wallet.tsx   EIP-1193 wallet connect, chain guard
-web/lib/client.ts           read client + write client (account + provider)
-web/lib/config.ts           chain/RPC/contract pins, limits, assertStudionet
-web/lib/types.ts            wire types (Acts, decision, receipt)
-web/lib/verify.ts           canonical JSON + SHA-256, mirrors the contract
-web/lib/image.ts            image → bytes arg for submit_image
-web/lib/acts.test.ts        contract ⇄ app action-key parity
-web/lib/verify.test.ts      digest reconstruction
+web/app/page.tsx              landing / trust model
+web/app/cases/page.tsx        case list (list_cases)
+web/app/cases/new/page.tsx    draft a case, with an optional held sum (open_case)
+web/app/cases/[id]/page.tsx   case detail: acts, evidence, decisions, settlement
+web/app/verify/page.tsx       recompute digests from live chain state (get_receipt)
+web/app/status/page.tsx       network + contract status (get_config / get_stats)
+web/components/Wallet.tsx     EIP-1193 wallet connect, chain guard
+web/components/TermsFields.tsx  the editable terms, shared by create and revise
+web/components/ReviseTerms.tsx  a new terms version (revise_terms)
+web/components/TextEvidence.tsx typed document evidence (submit_text)
+web/lib/client.ts             read client + write client (account + provider)
+web/lib/config.ts             chain/RPC/contract pins, limits, assertStudionet
+web/lib/types.ts              wire types (Acts, decision, receipt)
+web/lib/terms.ts              build + pre-validate terms_json, money bounds
+web/lib/amount.ts             GEN ⇄ atto, exact through BigInt
+web/lib/verify.ts             canonical JSON + SHA-256, mirrors the contract
+web/lib/image.ts              image → bytes arg for submit_image
+web/lib/acts.test.ts          contract ⇄ app action-key parity
+web/lib/verify.test.ts        digest reconstruction, incl. the shared ASCII fixture
 ```
 
 The app builds a write client with the connected account **and** provider, so
 `writeContract` signs through the user's wallet. Before building any transaction it
 checks `chainId === 61999` (`assertStudionet`). It renders action buttons from the
 contract's own `get_actions`, so the UI cannot offer an act the contract would
-refuse. `tests/parity/test_parity.py` and `web/lib/acts.test.ts` fail the build if
-the contract's action keys and the app's vocabulary ever diverge.
+refuse. **Every write in the table in §1 is reachable from the console** —
+including `fund_case`, `revise_terms`, `submit_text`, `expire_case` and
+`lapse_case` — and `tests/parity/test_parity.py` fails the build if a write loses
+its path or a rendered action loses its handler. It also fails if the contract's
+action keys and the app's vocabulary diverge, as does `web/lib/acts.test.ts`.

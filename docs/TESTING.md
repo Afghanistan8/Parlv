@@ -17,7 +17,7 @@ pnpm run smoke      # one read-only check against the live Studionet contract
 ```
 
 > Note: `python -m pytest` prints a `gltest` warning on stderr, which PowerShell
-> reports as `Exited with code 1`. The suite result line (`78 passed`) is the
+> reports as `Exited with code 1`. The suite result line (`85 passed`) is the
 > authoritative outcome.
 
 ## 1. Direct Mode contract tests (`tests/direct/`)
@@ -56,11 +56,33 @@ and renders every critical one, `get_actions` emits every mapped gate, and every
 gate reason is a user-facing sentence. This is what makes wire drift a build
 failure instead of a silent runtime bug.
 
+It additionally pins two things a steward flagged:
+
+- **Every write has a path in the console.** `test_every_write_is_reachable_from_the_client`
+  walks `web/app`, `web/lib` and `web/components` and fails if any of the 18 writes is
+  never called from app source, and `test_no_action_button_is_a_dead_end` fails if a
+  rendered `Can` affordance has no handler (a "Revise terms" button that did nothing
+  is exactly the defect this catches).
+- **The digest the browser rebuilds is the digest the contract wrote.**
+  `tests/parity/canonical.py` holds the parity cases and the exact `_canon`
+  expression; `tests/parity/fixtures/canonical.json` is the committed fixture; and
+  `web/lib/verify.test.ts` reads that same fixture and must reproduce every
+  `canonical` string and `sha256`. The cases cover non-ASCII text, astral
+  characters, code-point key ordering, control characters and a lone surrogate.
+
 ## 3. Frontend tests (`web/lib/*.test.ts`, `web/components/*.test.tsx`, Vitest)
 
 - `lib/acts.test.ts` — enforces contract ⇄ app action-key parity from the app side.
 - `lib/verify.test.ts` — canonical-JSON + SHA-256 digest reconstruction mirrors the
-  contract, including the immutable-field set.
+  contract, including `ensure_ascii=True` escaping, code-point key ordering and the
+  immutable-field set. It replays the shared
+  [`tests/parity/fixtures/canonical.json`](../tests/parity/fixtures/canonical.json)
+  fixture case by case, so a byte-level divergence from Python fails here.
+- `lib/amount.test.ts` — GEN ⇄ atto through BigInt: exact at 18 decimals, no float
+  in the path, and junk rejected.
+- `lib/terms.test.ts` — the terms builder and its client-side pre-validation mirror
+  `_terms` (bounds, duplicate criteria, respondent/inspector independence, held-sum
+  and bond ranges), and a draft made from chain terms rebuilds those terms.
 - `lib/client.test.ts` — pins the read path: `view` must request the
   `latest-final` transaction-hash variant and must parse the contract's
   JSON-string return.
@@ -102,7 +124,7 @@ difference is invisible to the unit tests and only shows up against the network.
 ## 6. Reproducing the counts
 
 ```bash
-python -m pytest -q          # 78 passed
-cd web && pnpm run test      # 12 passed (5 files)
+python -m pytest -q          # 85 passed (13 of them parity)
+cd web && pnpm run test      # 34 passed (7 files)
 cd web && pnpm run smoke     # 6/6 checks passed (live)
 ```

@@ -1,15 +1,21 @@
 /**
  * Case detail: state, terms digest, evidence, decision, finality, and the
  * on-chain action gates (get_actions) rendered directly — the app never
- * invents authority.
+ * invents authority. Every write the contract exposes is reachable from here:
+ * acceptance, funding, filing (image and text), readiness, assessment,
+ * challenge, readjudication, closure, finality, expiry, lapse and withdrawal.
  */
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "../../../components/Wallet";
+import { ReviseTerms } from "../../../components/ReviseTerms";
+import { TextEvidence } from "../../../components/TextEvidence";
 import { view, write } from "../../../lib/client";
-import type { Acts, Case, Decision, Evidence, Terms } from "../../../lib/types";
+import type { Acts, Case, Decision, Evidence, EvidenceKind, Terms } from "../../../lib/types";
+import { IMAGE_KINDS } from "../../../lib/terms";
+import { genFromAtto } from "../../../lib/amount";
 import { cleanImage, toBytesArg } from "../../../lib/image";
 import { isContractRefusal } from "../../../lib/errors";
 
@@ -25,6 +31,12 @@ function Can({ label, can, onClick }: { label: string; can: { ok: boolean; why: 
   );
 }
 
+const IMAGE_LABEL: Record<string, string> = {
+  PHOTO: "Photo",
+  VIDEO_FRAME: "Video frame",
+  DOCUMENT_PAGE: "Document page",
+};
+
 export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { provider, address, wrongNetwork } = useWallet();
@@ -36,6 +48,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState("");
+  const [revising, setRevising] = useState(false);
+  const [imgKind, setImgKind] = useState<EvidenceKind>("PHOTO");
 
   const reload = useCallback(async () => {
     setError("");
@@ -63,22 +77,30 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     void reload();
   }, [reload]);
 
-  async function act(fn: string, args: unknown[] = [], value = 0n) {
-    if (!provider) return setError("Connect a wallet first.");
-    if (wrongNetwork) return setError("Switch to Studionet first.");
+  async function act(fn: string, args: unknown[] = [], value = 0n): Promise<boolean> {
+    if (!provider) {
+      setError("Connect a wallet first.");
+      return false;
+    }
+    if (wrongNetwork) {
+      setError("Switch to Studionet first.");
+      return false;
+    }
     setBusy(fn);
     setError("");
     try {
       await write(provider, fn, args, value);
       await reload();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       setBusy("");
     }
   }
 
-  async function upload(kind: "PHOTO" | "DOCUMENT_PAGE" | "VIDEO_FRAME", file: File) {
+  async function upload(kind: EvidenceKind, file: File) {
     if (!provider) return setError("Connect a wallet first.");
     if (wrongNetwork) return setError("Switch to Studionet first.");
     setBusy("upload");
@@ -117,6 +139,9 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   if (error && !c) return <div className="card error">{error}</div>;
   if (!c || !t) return <p className="muted">Loading…</p>;
   const final = c.state === "FINAL";
+  const heldGen = t.held_sum_wei && t.held_sum_wei !== "0" ? genFromAtto(t.held_sum_wei) : "0";
+  const imageChoices = acts ? IMAGE_KINDS.filter((k) => acts.file[k].ok) : [];
+  const imageKind = imageChoices.includes(imgKind) ? imgKind : imageChoices[0];
 
   return (
     <>
@@ -147,6 +172,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         <div>Claim: {t.claim}</div>
         <div>Criteria: {t.criteria.map((x) => x.text).join(" | ")}</div>
         <div>Terms digest: <span className="mono">{c.accepted_digest || "(not yet accepted)"}</span></div>
+        <div>
+          Held sum: <span className="mono">{heldGen} GEN</span>
+          {t.funder && <> · funded by the {t.funder.toLowerCase()}</>} · deposited:{" "}
+          <span className="mono">{genFromAtto(c.funded_wei || "0")} GEN</span>
+        </div>
         <div>Evidence deadline: <span className="mono">{c.evidence_deadline || "—"}</span></div>
       </div>
       <div className="card">
@@ -168,17 +198,36 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         {acts && (
           <div>
             <label>Upload image evidence (cleaned in-browser before sending)</label>
+            <select
+              value={imageKind ?? ""}
+              onChange={(e) => setImgKind(e.target.value as EvidenceKind)}
+              disabled={imageChoices.length === 0}
+            >
+              {imageChoices.length === 0 && <option value="">(none allowed by these terms)</option>}
+              {imageChoices.map((k) => (
+                <option key={k} value={k}>{IMAGE_LABEL[k] ?? k}</option>
+              ))}
+            </select>
             <input
               type="file"
               accept="image/png,image/jpeg"
-              disabled={busy !== "" || !(acts.file.PHOTO.ok || acts.file.DOCUMENT_PAGE.ok)}
+              disabled={busy !== "" || !imageKind}
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) void upload("PHOTO", f);
+                if (f && imageKind) void upload(imageKind, f);
               }}
             />
-            {!acts.file.PHOTO.ok && <div className="small muted">{acts.file.PHOTO.why}</div>}
+            {imageChoices.length === 0 && <div className="small muted">{acts.file.PHOTO.why}</div>}
           </div>
+        )}
+        {acts && (
+          <TextEvidence
+            criteriaIds={t.criteria.map((x) => x.id)}
+            enabled={acts.file.TEXT_DOCUMENT.ok}
+            why={acts.file.TEXT_DOCUMENT.why}
+            busy={busy === "submit_text"}
+            submit={(metaJson, text) => act("submit_text", [id, metaJson, text])}
+          />
         )}
       </div>
       {decision && (
@@ -204,13 +253,16 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {acts && address && (
         <div className="card">
           <h3>Your actions ({acts.role || "no role on this case"})</h3>
-          <Can label="Revise terms" can={acts.revise} />
+          <Can label="Revise terms" can={acts.revise} onClick={() => setRevising((v) => !v)} />
           <Can label="Accept terms" can={acts.accept} onClick={() => act("accept_case", [id, t.digest])} />
           <Can label="Decline" can={acts.decline} onClick={() => act("decline_case", [id, "declined after review"])} />
           <Can label="Withdraw case" can={acts.withdraw_case} onClick={() => act("withdraw_case", [id])} />
           <Can label="Accept inspector role" can={acts.accept_inspector} onClick={() => act("accept_inspector", [id, t.digest])} />
+          <Can label={`Fund the held sum (${heldGen} GEN${t.funder ? `, ${t.funder.toLowerCase()}` : ""})`} can={acts.fund} onClick={() => act("fund_case", [id], BigInt(t.held_sum_wei || "0"))} />
+          <Can label="Expire this draft" can={acts.expire} onClick={() => act("expire_case", [id])} />
           <Can label="Mark evidence complete" can={acts.ready} onClick={() => act("mark_ready", [id])} />
           <Can label="Request assessment" can={acts.assess} onClick={() => act("request_assessment", [id])} />
+          <Can label="Lapse this case" can={acts.lapse} onClick={() => act("lapse_case", [id])} />
           <Can label="Challenge" can={acts.challenge} onClick={() => act("challenge", [id, "The evidence does not establish the claim."], BigInt(t.challenge_bond_wei))} />
           <Can label="Readjudicate" can={acts.readjudicate} onClick={() => act("readjudicate", [id])} />
           <Can label="Close challenge" can={acts.close_challenge} onClick={() => act("close_challenge", [id])} />
@@ -218,6 +270,16 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           <Can label="Withdraw owed funds" can={acts.withdraw} onClick={() => act("withdraw", [])} />
           {busy && <div className="small muted">Working: {busy}…</div>}
         </div>
+      )}
+      {revising && acts?.revise.ok && (
+        <ReviseTerms
+          terms={t}
+          busy={busy === "revise_terms"}
+          onCancel={() => setRevising(false)}
+          submit={async (termsJson) => {
+            if (await act("revise_terms", [id, termsJson])) setRevising(false);
+          }}
+        />
       )}
       {error && <div className="card error">{error}</div>}
     </>

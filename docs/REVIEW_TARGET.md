@@ -83,6 +83,27 @@ Parity tests fail if the contract's `get_actions` keys and the app's vocabulary
 diverge. The app renders affordances from `get_actions` and refuses non-Studionet
 chains before building any transaction.
 
+They also fail if a write the contract documents has no path in the console
+(`test_every_write_is_reachable_from_the_client`) or if a rendered action loses its
+handler (`test_no_action_button_is_a_dead_end`).
+
+## 6b. Does the browser recompute the contract's digest byte for byte?
+
+```bash
+python tests/parity/canonical.py            # regenerate the fixture; git diff must be empty
+python -m pytest tests/parity/test_parity.py -q -k canon
+cd web && pnpm exec vitest run lib/verify.test.ts
+```
+
+Every digest is a SHA-256 over the contract's `_canon`, which uses
+`ensure_ascii=True` and Python's code-point key ordering. `web/lib/verify.ts`
+rebuilds those bytes in the browser so the Verify page can check a case without
+trusting the app. `tests/parity/fixtures/canonical.json` is the shared fixture: the
+Python test regenerates it, and `web/lib/verify.test.ts` replays it and must produce
+the identical canonical string and digest for every case — accented text, CJK,
+astral emoji, code-point key ordering, control characters and a lone surrogate. A
+divergence here would show a valid case as MISMATCH.
+
 ## 7. Are the toolchain pins real?
 
 ```bash
